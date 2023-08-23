@@ -1,13 +1,7 @@
 #include "loader.h"
-
 Elf32_Ehdr *ehdr;
-
 Elf32_Phdr *phdr;
-
 int fd;
-
-
-
 void loader_cleanup() {
         free(ehdr);
 
@@ -23,9 +17,6 @@ void loader_cleanup() {
     }
 
 }
-
-
-
 void load_and_run_elf(char** exe) {
 
     fd = open(exe[1], O_RDONLY);
@@ -78,7 +69,6 @@ void load_and_run_elf(char** exe) {
     int result = _start();
 
     printf("User _start return value = %d\n", result);
-
 }
 int main(int argc, char** argv) {
 
@@ -94,6 +84,5 @@ int main(int argc, char** argv) {
     loader_cleanup();
 
     return 0;
-
 }
 
