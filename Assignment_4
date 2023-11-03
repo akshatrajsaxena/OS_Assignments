@@ -1,448 +1,3 @@
-
-
-// #include "loader.h"
-
-// Elf32_Ehdr *ehdr;
-
-// Elf32_Phdr *phdr;
-
-// int fd;
-
-
-// static  int pagefault_occurred_count = 0;
-// double used,lost;
-// long page_size;
-// static void sigsegv_handler(int signum) {
-    
-// }
-
-// void loader_cleanup()
-// {
-
-//     free(ehdr);
-
-//     free(phdr);
-
-//     if (fd >= 0)
-//     {
-
-//         close(fd);
-
-//         fd = -1;
-//     }
-// }
-
-// void load_and_run_elf(char **exe)
-// {
-//     // signal();
-//     fd = open(exe[1], O_RDONLY);
-
-//     if (fd == -1)
-//     {
-
-//         printf("Error opening ELF file");
-
-//         return;
-//     }
-
-//     ehdr = (Elf32_Ehdr *)malloc(sizeof(Elf32_Ehdr));
-
-//     if (read(fd, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr))
-//     {
-
-//         printf("Error reading ELF header");
-
-//         return;
-//     }
-
-//     if (memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0)
-//     {
-
-//         fprintf(stderr, "Invalid ELF file\n");
-
-//         return;
-//     }
-
-//     phdr = (Elf32_Phdr *)malloc(ehdr->e_phentsize * ehdr->e_phnum);
-
-//     lseek(fd, ehdr->e_phoff, SEEK_SET);
-
-//     if (read(fd, phdr, ehdr->e_phentsize * ehdr->e_phnum) !=
-
-//         ehdr->e_phentsize * ehdr->e_phnum)
-//     {
-
-//         printf("Error reading program header table");
-
-//         return;
-//     }
-
-//     for (int i = 0; i < ehdr->e_phnum; ++i)
-//     {
-
-//         // if (phdr[i].p_type == PT_LOAD)
-//         // {
-        
-//         __pid_t child = fork();
-//         if(child ==0){
-//             printf("Running the process\n");
-//             // Normal code execution starts here
-//         int (*_start)() = (int (*)())(uintptr_t)ehdr->e_entry;
-//         int result = _start();
-        
-//             exit(0);
-//         }
-
-//         else if (child<0)
-//         {
-//             perror("Error in creating the child\n");
-//             exit(1);
-//         }
-        
-//         else {
-//         // Normal code execution starts here
-//         // int (*_start)() = (int (*)())(uintptr_t)ehdr->e_entry;
-//         // int result = _start();
-
-//         // Check for segmentation fault after calling _start
-        
-//         int satus ;
-        
-//         waitpid(child, &satus, 0);
-//         if (WIFSIGNALED(satus) && WTERMSIG(satus) == SIGSEGV) {
-
-//             printf("Page fault occurred\n");
-            
-
-//             void *vir_adr = (void *)(uintptr_t)phdr[i].p_vaddr;
-
-//             void *virtual = mmap(vir_adr, page_size,
-
-//                                 PROT_READ | PROT_WRITE | PROT_EXEC,
-
-//                                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-//             pagefault_occurred_count++;
-//             lost+=(page_size-phdr[i].p_memsz);
-//             used+=phdr[i].p_memsz;
-
-//             if (virtual == MAP_FAILED)
-//             {
-
-//                 printf("Error mapping memory\n");
-
-//                 return;
-//             }
-
-//             lseek(fd, phdr[i].p_offset, SEEK_SET);
-
-//             if (read(fd, virtual, phdr[i].p_filesz) != phdr[i].p_filesz)
-//             {
-
-//                 printf("Error reading segment content\n");
-
-//                 return;
-//             }
-            
-
-//         }
-//         // else{
-//         //     printf("Child terminated normally");
-//         // }
-
-        
-
-//         }
-//     }
-
-//     int (*_start)() = (int (*)())(uintptr_t)ehdr->e_entry;
-
-//     int result = _start();
-
-//     printf("User _start return value = %d\n", result);
-// }
-
-// int main(int argc, char **argv)
-// {
-   
-//     if (argc != 2)
-//     {
-
-//         printf("Usage: %s <ELF Executable>\n", argv[0]);
-
-//         exit(1);
-//     }
-
-
-
-//     page_size = sysconf(_SC_PAGESIZE);
-//     printf("Page size: %ld bytes\n", page_size);
-//     load_and_run_elf(argv);
-
-//     printf("Number of page allocation: %d\n",pagefault_occurred_count);
-//     printf("Number of page faults: %d\n",pagefault_occurred_count);
-//     printf("Internal Fragmentation: %.3f KB\n",lost/(1024.0));
-//     printf("Used Memory: %.3f KB\n",used/(1024.0));
-
-
-//     loader_cleanup();
-
-//     return 0;
-// }
-
-
-// #include "loader.h"
-
-// Elf32_Ehdr *ehdr;
-
-// Elf32_Phdr *phdr;
-
-// int fd;
-
-
-// static  int pagefault_occurred_count = 0;
-// double used,lost;
-// long page_size;
-// __pid_t child_1;
-// static volatile int  kill_c=1;
-// volatile int index_seg;
-// sem_t _semaphore;
-// void sig_P(int sig){
-//     printf("Parent continued");
-// }
-//  void sigpage_handler(int signum) {
-//     printf("Signal caught\n");
-    
-//     pid_t child_2=fork();
-//     page_allocator(index_seg);
-//     kill(getppid,SIGUSR1);
-
-    
-//     // if (child_2==0) 
-//     // {
-//     //     page_allocator(index_seg);
-//     //     exit(0);
-//     // }
-//     // else{
-//     //     wait(0);
-//     // }
-    
-// }
-// void page_allocator(volatile int i){
-    
-//     printf("Page Created\n");
-//     void *vir_adr = (void *)(uintptr_t)phdr[i].p_vaddr;
-
-//             void *virtual = mmap(vir_adr, page_size,
-
-//                                 PROT_READ | PROT_WRITE | PROT_EXEC,
-
-//                                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-//             pagefault_occurred_count++;
-//             lost+=(page_size-phdr[i].p_memsz);
-//             used+=phdr[i].p_memsz;
-
-//             if (virtual == MAP_FAILED)
-//             {
-
-//                 printf("Error mapping memory\n");
-
-//                 return;
-//             }
-
-//             lseek(fd, phdr[i].p_offset, SEEK_SET);
-
-//             if (read(fd, virtual, phdr[i].p_filesz) != phdr[i].p_filesz)
-//             {
-
-//                 printf("Error reading segment content\n");
-
-//                 return;
-//             }
-//             return;
-// }
-
-// void loader_cleanup()
-// {
-
-//     free(ehdr);
-
-//     free(phdr);
-
-//     if (fd >= 0)
-//     {
-
-//         close(fd);
-
-//         fd = -1;
-//     }
-// }
-
-// void load_and_run_elf(char **exe)
-// {
-//     // signal();
-//     fd = open(exe[1], O_RDONLY);
-
-//     if (fd == -1)
-//     {
-
-//         printf("Error opening ELF file");
-
-//         return;
-//     }
-
-//     ehdr = (Elf32_Ehdr *)malloc(sizeof(Elf32_Ehdr));
-
-//     if (read(fd, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr))
-//     {
-
-//         printf("Error reading ELF header");
-
-//         return;
-//     }
-
-//     if (memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0)
-//     {
-
-//         fprintf(stderr, "Invalid ELF file\n");
-
-//         return;
-//     }
-
-//     phdr = (Elf32_Phdr *)malloc(ehdr->e_phentsize * ehdr->e_phnum);
-
-//     lseek(fd, ehdr->e_phoff, SEEK_SET);
-
-//     if (read(fd, phdr, ehdr->e_phentsize * ehdr->e_phnum) !=
-
-//         ehdr->e_phentsize * ehdr->e_phnum)
-//     {
-
-//         printf("Error reading program header table");
-
-//         return;
-//     }
-//     signal(SIGUSR1,sig_P);
-//     for (int i = 0; i < ehdr->e_phnum; ++i)
-//     {
-
-//         // if (phdr[i].p_type == PT_LOAD)
-//         // {
-        
-//         __pid_t child = fork();
-//         if(child ==0){
-//             printf("Running the process\n");
-//             // Normal code execution starts here
-//         int (*_start)() = (int (*)())(uintptr_t)ehdr->e_entry;
-//         int result = _start();
-
-//             exit(0);
-//         }
-
-//         else if (child<0)
-//         {
-//             perror("Error in creating the child\n");
-//             exit(1);
-//         }
-        
-//         else {
-//         // Normal code execution starts here
-//         // int (*_start)() = (int (*)())(uintptr_t)ehdr->e_entry;
-//         // int result = _start();
-
-//         // Check for segmentation fault after calling _start
-        
-//         int satus ;
-        
-//         waitpid(child, &satus, 0);
-//         if (WIFSIGNALED(satus) && WTERMSIG(satus) == SIGSEGV) {
-
-//             printf("Page fault occurred\n");
-//             index_seg =i;  
-//             // kill(child_1,SIGUSR1);
-//             page_allocator(i);
-            
-            
-            
-
-//         }
-//         else{
-//             printf("Child terminated normally\n");
-//         }
-
-        
-
-//         }
-//         sleep(2);
-//     }
-//     // killing child 1
-//     sem_wait(&_semaphore);
-//     kill_c=0;
-//     sem_post(&_semaphore);
-//     int (*_start)() = (int (*)())(uintptr_t)ehdr->e_entry;
-
-//     int result = _start();
-
-//     printf("User _start return value = %d\n", result);
-// }
-
-// int main(int argc, char **argv)
-// {
-   
-//     if (argc != 2)
-//     {
-
-//         printf("Usage: %s <ELF Executable>\n", argv[0]);
-
-//         exit(1);
-//     }
-
-
-// if (sem_init(&_semaphore, 0, 1) == -1) {
-//             perror("sem_init");
-//             return 1;
-//         }
-
-//     page_size = sysconf(_SC_PAGESIZE);
-//     printf("Page size: %ld bytes\n", page_size);
-//     child_1=fork();
-//     // if (child_1==0)
-//     // {   
-//     //     signal(SIGUSR1,sigpage_handler);
-
-//     //     // while(1){
-//     //     //     sem_wait(&_semaphore);
-//     //     //     if(kill_c == 0){
-//     //     //         break;
-//     //     //     }
-//     //     //     printf("kill_c value:%d\n",kill_c);
-//     //     //     sem_post(&_semaphore);
-//     //     // }
-//     //     printf("Child_1 ends\n");
-//     //     exit(0);
-        
-//     // }
-//     // else if(child_1<0){
-//     //     perror("Error in creating child_1");
-//     // }
-//     // else{
-//     load_and_run_elf(argv);
-//     int status;
-//     // printf("kill_c value:%d\n",kill_c);
-//     // waitpid(child_1,&status,0);
-
-//     printf("Number of page allocation: %d\n",pagefault_occurred_count);
-//     printf("Number of page faults: %d\n",pagefault_occurred_count);
-//     printf("Internal Fragmentation: %.3f KB\n",lost/(1024.0));
-//     printf("Used Memory: %.3f KB\n",used/(1024.0));
-
-
-//     loader_cleanup();
-//     // }
-    
-   
-
-//     return 0;
-// }
 #include "loader.h"
 
 Elf32_Ehdr *ehdr;
@@ -461,7 +16,7 @@ volatile int index_seg;
 sem_t _semaphore;
 
 void pagefault_handler(int signo, siginfo_t *info, void *context) {
-    void *fault_address = info->si_addr;
+    void* fault_address = info->si_addr;
     printf("Segmentation fault at address: %p\n", fault_address);
     page_allocator(fault_address);
     
@@ -469,14 +24,15 @@ void pagefault_handler(int signo, siginfo_t *info, void *context) {
 
 void page_allocator(void* address){
     
-    for (int i = 0; i < ehdr->e_phnum; ++i)
+    for (int i = 0; i < ehdr->e_phnum; i++)
     {  
-        // int i=1;
+        
+    
     void *vir_adr = (void *)(uintptr_t)phdr[i].p_vaddr;
-    if(((uintptr_t)address)%1000==((uintptr_t)vir_adr)%1000){
+    //checking if the 
+    if((address)>=(vir_adr)&&(vir_adr+phdr[i].p_memsz)>address ){
     printf("Page Created\n");
-
-    void *virtual = mmap(vir_adr, page_size,
+    void *virtual = mmap(vir_adr, 2*page_size,
 
                                 PROT_READ | PROT_WRITE | PROT_EXEC,
 
@@ -507,6 +63,8 @@ void page_allocator(void* address){
             }
             return;
 }
+
+
 
 void loader_cleanup()
 {
@@ -573,58 +131,19 @@ void load_and_run_elf(char **exe)
     sa.sa_flags = SA_NODEFER | SA_SIGINFO;
     sigaction(SIGSEGV, &sa, NULL);
     
-    for (int i = 0; i < ehdr->e_phnum; ++i)
-    {       
-        // __pid_t child = fork();
-        // if(child ==0){
-        //     printf("%d) Running the process\n", i);
-        //     // Normal code execution starts here
-        // int (*_start)() = (int (*)())(uintptr_t)ehdr->e_entry;
-        // int result = _start();
-        // if(result!=-1)
-        // printf("User _start return value = %d\n", result);
-        
-
-
-        //     exit(0);
-        // }
-
-        // else if (child<0)
-        // {
-        //     perror("Error in creating the child\n");
-        //     exit(1);
-        // }
-        
-        // else {
-        
-        // int satus ;
-        // waitpid(child, &satus, 0);
-        // if (WIFSIGNALED(satus) && WTERMSIG(satus) == SIGSEGV) {
-
-        //     printf("Page fault occurred\n");
-        //     index_seg =i;  
-           
-            
-
-            
-        //     }
-
-        // else{
-        //     printf("Child terminated normally\n");
-        //     break;
-        // }
-
-        // }
+    for (int i = 0; i < ehdr->e_phnum; i++)
+    { 
 
 
         int (*_start)() = (int (*)())(uintptr_t)ehdr->e_entry;
         int result = _start();
         printf("%d\n",result);
-        // sleep(2);
+        break;
+
        
     // 0x8049049
-    void *vir_adr = (void *)(uintptr_t)phdr[i].p_vaddr;
-    printf("%p\n",vir_adr);
+    // void *vir_adr = (void *)(uintptr_t)phdr[i].p_paddr;
+    // printf("%p\n",vir_adr);
     }
   
    
