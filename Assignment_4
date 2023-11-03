@@ -17,7 +17,7 @@ void page_fault_handler(int signo, siginfo_t *si, void *context)
     
 }
 void page_allocator(void* address){
-    void *page_start = (void *)((uintptr_t)address & ~(page_size - 1));
+    void *vir_addr = (void *)((uintptr_t)address & ~(page_size - 1));
 
     
     Elf32_Phdr *target_phdr = NULL;
@@ -37,8 +37,8 @@ void page_allocator(void* address){
     }
 
    
-    void *allocated_page = mmap(page_start, page_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
-    if (allocated_page == MAP_FAILED)
+    void *virtual = mmap(vir_addr, page_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+    if (virtual == MAP_FAILED)
     {
         perror("mmap");
         exit(EXIT_FAILURE);
@@ -46,7 +46,7 @@ void page_allocator(void* address){
 
 
     lseek(fd, target_phdr->p_offset, SEEK_SET);
-    if (read(fd, allocated_page, target_phdr->p_filesz) != target_phdr->p_filesz)
+    if (read(fd, virtual, target_phdr->p_filesz) != target_phdr->p_filesz)
     {
         perror("read");
         exit(EXIT_FAILURE);
@@ -112,20 +112,18 @@ void load_and_run_elf(char **exe)
     sa.sa_flags = SA_NODEFER | SA_SIGINFO;
     sigaction(SIGSEGV, &sa, NULL);
     
-    for (int i = 0; i < ehdr->e_phnum; i++)
-    { 
 
 
         int (*_start)() = (int (*)())(uintptr_t)ehdr->e_entry;
         int result = _start();
         printf("%d\n",result);
-        break;
+        
 
        
     // 0x8049049
     // void *vir_adr = (void *)(uintptr_t)phdr[i].p_paddr;
     // printf("%p\n",vir_adr);
-    }
+    
   
    
    
