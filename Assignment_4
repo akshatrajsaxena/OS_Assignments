@@ -1,137 +1,316 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <signal.h>
-#include <stdint.h>
-#include <elf.h>
+#include "loader.h"
 
 Elf32_Ehdr *ehdr;
 Elf32_Phdr *phdr;
 int fd;
-int page_faults = 0;
-int page_allocations = 0;
-int internal_fragmentation_kb = 0;
+
+int pagefault = 0,page_count;
+double used,lost;
+size_t page_size;
+
 
 typedef int (*functocallfib)();
-
+void page_allocator(void* address);
 void page_fault_handler(int signo, siginfo_t *si, void *context)
-{
-  void *fault_address = si->si_addr;
-  int page_size = getpagesize();
-  void *page_start = (void *)((uintptr_t)fault_address & ~(page_size - 1));
+{   
+    void* fault_address = si->si_addr;
+    printf("Segmentation fault at address: %p\n", fault_address);
+    page_allocator(fault_address);
+    
+}
 
-  // Find the program header that contains the faulting address
-  Elf32_Phdr *target_phdr = NULL;
-  for (int i = 0; i < ehdr->e_phnum; i++)
-  {
-    if ((uintptr_t)fault_address >= phdr[i].p_vaddr && (uintptr_t)fault_address < (phdr[i].p_vaddr + phdr[i].p_memsz))
+
+//********************* With Bonus*****************************
+void page_allocator(void* address){
+     void *vir_addr = (void*)((uintptr_t)address & ~(page_size - 1));
+    
+    
+    Elf32_Phdr *req_phdr = NULL;
+    for (int i = 0; i < ehdr->e_phnum; i++)
     {
-      target_phdr = &phdr[i];
-      break;
+        if ((uintptr_t)address >= phdr[i].p_vaddr && (uintptr_t)address < (phdr[i].p_vaddr + phdr[i].p_memsz))
+        {
+            req_phdr = &phdr[i];
+            break;
+        }
     }
-  }
 
-  if (target_phdr == NULL)
-  {
-    perror("Segment not found for faulting address");
-    exit(EXIT_FAILURE);
-  }
+    if (req_phdr == NULL)
+    {
+        perror("Segment not found for faulting address");
+        exit(EXIT_FAILURE);
+    }
 
-  // Allocate memory for the page containing the faulting address
-  void *allocated_page = mmap(page_start, page_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
-  if (allocated_page == MAP_FAILED)
-  {
-    perror("mmap");
-    exit(EXIT_FAILURE);
-  }
+   
+    void *virtual = mmap(vir_addr, page_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+    if (virtual == MAP_FAILED)
+    {
+        perror("mmap");
+        exit(EXIT_FAILURE);
+    }
 
-  // Copy the data from the ELF file to the allocated page
-  lseek(fd, target_phdr->p_offset, SEEK_SET);
-  if (read(fd, allocated_page, target_phdr->p_filesz) != target_phdr->p_filesz)
-  {
-    perror("read");
-    exit(EXIT_FAILURE);
-  }
 
-  page_faults++;
-  page_allocations++;
-  internal_fragmentation_kb += (page_size - target_phdr->p_filesz) / 1024;
+    lseek(fd, req_phdr->p_offset, SEEK_SET);
+    if (read(fd, virtual, req_phdr->p_filesz) != req_phdr->p_filesz)
+    {
+        perror("read");
+        exit(EXIT_FAILURE);
+    }
 
-  // Update the instruction pointer to continue execution from the new page
-  ucontext_t *ucontext = (ucontext_t *)context;
+    page_count++;
+    pagefault++;
+    if(req_phdr->p_memsz-((uintptr_t)address-(uintptr_t)req_phdr->p_vaddr)>page_size){
+        used+=4096/1024.0;
+        
+    // printf("used: %.3f\n",4.096);
 
-#ifdef REG_RIP
-  ucontext->uc_mcontext.gregs[REG_RIP] = (greg_t)(uintptr_t)allocated_page + (uintptr_t)fault_address - (uintptr_t)page_start;
-#endif
+        
+    }
+        
+    else{
+        if(req_phdr->p_memsz>4096){
+             used+=(req_phdr->p_memsz-((uintptr_t)address-(uintptr_t)req_phdr->p_vaddr))/1024.0;
+            lost+=(4096-(req_phdr->p_memsz-((uintptr_t)address-(uintptr_t)req_phdr->p_vaddr)))/1024.0;
+        //   printf("used: %.3f\n",(req_phdr->p_memsz-((uintptr_t)address-(uintptr_t)req_phdr->p_vaddr))/1024.0);
+        }
+        else{
+            used+=(req_phdr->p_memsz)/1024.0;
+            lost+=(4096-req_phdr->p_memsz)/1024.0;
+        }
 
-  // If REG_RIP is not defined, you may need to use an appropriate register based on your architecture.
-  // For x86, you can use REG_EIP as follows:
-  // ucontext->uc_mcontext.gregs[REG_EIP] = (greg_t)(uintptr_t)allocated_page + (uintptr_t)fault_address - (uintptr_t)page_start;
+        
+
+    }
+       
+    
 }
 
-void loader_cleanup()
-{
-  free(ehdr);
-  free(phdr);
-  close(fd);
-}
+//RESULT ./loader sum:
+// Page size: 4096 bytes
+// Segmentation fault at address: 0x8049000
+// used: 0.107
+// Segmentation fault at address: 0x804d000
+// used: 4.096
+// Segmentation fault at address: 0x804e000
+// used: 0.004
+// 2048
+// Number of page allocation: 3
+// Number of page faults: 3
+// Internal Fragmentation: 7.889 KB
+// Used Memory: 4.111 KB
 
-void load_and_run_elf(char *exe)
-{
-  fd = open(exe, O_RDONLY);
-  if (fd == -1)
-  {
-    perror("open");
-    exit(EXIT_FAILURE);
-  }
 
-  ehdr = (Elf32_Ehdr *)malloc(sizeof(Elf32_Ehdr));
-  if (read(fd, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr) || lseek(fd, ehdr->e_phoff, SEEK_SET) != ehdr->e_phoff)
-  {
-    perror("read/lseek");
+
+
+
+
+//****************without bonus****************************
+
+
+// void page_allocator(void* address) {
+//     Elf32_Phdr* req_phdr = NULL;
+
+//     // Find the target segment
+//     for (int i = 0; i < ehdr->e_phnum; i++) {
+//         if ((uintptr_t)address >= phdr[i].p_vaddr && (uintptr_t)address < (phdr[i].p_vaddr + phdr[i].p_memsz)) {
+//             req_phdr = &phdr[i];
+//             break;
+//         }
+//     }
+
+//     if (req_phdr == NULL) {
+//         perror("Segment not found for faulting address");
+//         exit(EXIT_FAILURE);
+//     }
+
+   
+//     if (req_phdr->p_memsz > page_size) {
+//     // printf("size > 4KB\n");
+   
+//     size_t remaining = req_phdr->p_memsz;
+//     int i = 0;
+
+//     while (remaining > 0) {
+//         // printf("Remaining size: %zu\n", remaining);
+
+//         void* page_start = (void*)((uintptr_t)req_phdr->p_vaddr + i * page_size);
+
+//         size_t read_size = (remaining > page_size) ? page_size : remaining;
+
+//         void* virtual = mmap(page_start, page_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+
+//         if (virtual == MAP_FAILED) {
+//             perror("mmap");
+//             exit(EXIT_FAILURE);
+//         }
+
+
+//         lseek(fd, req_phdr->p_offset , SEEK_SET);
+
+//         if (read(fd, virtual,req_phdr->p_filesz) != req_phdr->p_filesz) {
+//             perror("read");
+//             exit(EXIT_FAILURE);
+//         }
+
+//         page_count++;
+//         used += read_size / 1024.0;
+//         lost += (page_size - read_size) / 1024.0;
+//         remaining -= read_size;
+//         i++;
+//     }
+
+//     pagefault++;
+// }
+//  else {
+//         // printf("size <= 4K\nB");
+//         void *vir_adr = (void *)(uintptr_t)req_phdr->p_vaddr;
+//         void* virtual = mmap(vir_adr, req_phdr->p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+//         if (virtual == MAP_FAILED) {
+//             perror("mmap");
+//             exit(EXIT_FAILURE);
+//         }
+
+//         lseek(fd, req_phdr->p_offset, SEEK_SET);
+//         size_t read_size = req_phdr->p_filesz;
+
+//         if (read(fd, virtual, read_size) != read_size) {
+//             perror("read");
+//             exit(EXIT_FAILURE);
+//         }
+//         page_count++;
+//         pagefault++;
+//         used += read_size / 1024.0;
+//         lost += (page_size - read_size) / 1024.0;
+//     }
+// }
+
+// Result ./loader fib:
+// Page size: 4096 bytes
+// Segmentation fault at address: 0x8049049
+// size <= 4K
+// B102334155
+// Number of page allocation: 1
+// Number of page faults: 1
+// Internal Fragmentation: 3.889 KB
+// Used Memory: 0.111 KB
+
+//Result ./loader sum
+// Page size: 4096 bytes
+// Segmentation fault at address: 0x8049000
+// size <= 4K
+// BSegmentation fault at address: 0x804d000
+// size > 4KB
+// Remaining size: 8196
+// Remaining size: 4100
+// Remaining size: 4
+// 2048
+// Number of page allocation: 4
+// Number of page faults: 2
+// Internal Fragmentation: 7.889 KB
+// Used Memory: 8.111 KB
+
+
+void loader_cleanup(){
+ 
+    free(ehdr);
+    free(phdr);
     close(fd);
-    exit(EXIT_FAILURE);
-  }
-
-  phdr = (Elf32_Phdr *)malloc(sizeof(Elf32_Phdr) * ehdr->e_phnum);
-  if (read(fd, phdr, sizeof(Elf32_Phdr) * ehdr->e_phnum) != sizeof(Elf32_Phdr) * ehdr->e_phnum)
-  {
-    perror("read");
-    close(fd);
-    exit(EXIT_FAILURE);
-  }
-
-  struct sigaction sa;
-  sa.sa_sigaction = page_fault_handler;
-  sa.sa_flags = SA_SIGINFO;
-  sigaction(SIGSEGV, &sa, NULL);
-
-  // Call _start directly and handle segmentation fault if it occurs
-  int result = 0;
-  functocallfib _start = (functocallfib)ehdr->e_entry;
-  result = _start();
-
-  printf("Result is %d\n", result);
-
-  printf("Total Page Faults: %d\n", page_faults);
-  printf("Total Page Allocations: %d\n", page_allocations);
-  printf("Total Internal Fragmentation (KB): %d\n", internal_fragmentation_kb);
-
-  loader_cleanup();
 }
+
+
+
+
+void load_and_run_elf(char **exe)
+{
+    // signal();
+    fd = open(exe[1], O_RDONLY);
+
+    if (fd == -1)
+    {
+
+        printf("Error opening ELF file");
+
+        return;
+    }
+
+    ehdr = (Elf32_Ehdr *)malloc(sizeof(Elf32_Ehdr));
+
+    if (read(fd, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr))
+    {
+
+        printf("Error reading ELF header");
+
+        return;
+    }
+
+    if (memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0)
+    {
+
+        fprintf(stderr, "Invalid ELF file\n");
+
+        return;
+    }
+
+    phdr = (Elf32_Phdr *)malloc(ehdr->e_phentsize * ehdr->e_phnum);
+
+    lseek(fd, ehdr->e_phoff, SEEK_SET);
+
+    if (read(fd, phdr, ehdr->e_phentsize * ehdr->e_phnum) !=
+
+        ehdr->e_phentsize * ehdr->e_phnum)
+    {
+
+        printf("Error reading program header table");
+
+        return;
+    }
+    struct sigaction sa;
+    sa.sa_sigaction = page_fault_handler;
+    sa.sa_flags = SA_NODEFER | SA_SIGINFO;
+    sigaction(SIGSEGV, &sa, NULL);
+    
+
+
+        int (*_start)() = (int (*)())(uintptr_t)ehdr->e_entry;
+        int result = _start();
+        printf("Result: %d\n",result);
+        
+
+       
+    // 0x8049049
+    // void *vir_adr = (void *)(uintptr_t)phdr[i].p_paddr;
+    // printf("%p\n",vir_adr);
+    
+  
+   
+   
+}
+
 
 int main(int argc, char **argv)
 {
-  if (argc != 2)
-  {
-    printf("Usage: %s \n", argv[0]);
-    exit(1);
-  }
+    if (argc != 2)
+    {
+        printf("Usage: %s \n", argv[0]);
+        exit(1);
+    }
 
-  load_and_run_elf(argv[1]);
+    page_size = sysconf(_SC_PAGESIZE);
+    printf("Page size: %zu bytes\n", page_size);
+    
 
-  return 0;
+    load_and_run_elf(argv);
+    
+    
+
+    printf("Number of page allocation: %d\n",page_count);
+    printf("Number of page faults: %d\n",pagefault);
+    printf("Internal Fragmentation: %.3f KB\n",lost);
+    // printf("Used Memory: %.3f KB\n",used);
+
+
+    loader_cleanup();
+
+    return 0;
 }
 
