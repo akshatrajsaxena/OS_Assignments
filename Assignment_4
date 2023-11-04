@@ -9,7 +9,7 @@ double used,lost;
 size_t page_size;
 
 
-typedef int (*functocallfib)();
+
 void page_allocator(void* address);
 void page_fault_handler(int signo, siginfo_t *si, void *context)
 {   
@@ -37,11 +37,12 @@ void page_allocator(void* address){
 
     if (req_phdr == NULL)
     {
-        perror("Segment not found for faulting address");
+        perror("Segment not found\n");
         exit(EXIT_FAILURE);
     }
 
-   
+   //getting an error when replacing it with address
+   //solved using vir_adr : determined the starting virtual address of a memory page that contains the faulting address
     void *virtual = mmap(vir_addr, page_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
     if (virtual == MAP_FAILED)
     {
@@ -69,7 +70,7 @@ void page_allocator(void* address){
         
     else{
         if(req_phdr->p_memsz>4096){
-             used+=(req_phdr->p_memsz-((uintptr_t)address-(uintptr_t)req_phdr->p_vaddr))/1024.0;
+            used+=(req_phdr->p_memsz-((uintptr_t)address-(uintptr_t)req_phdr->p_vaddr))/1024.0;
             lost+=(4096-(req_phdr->p_memsz-((uintptr_t)address-(uintptr_t)req_phdr->p_vaddr)))/1024.0;
         //   printf("used: %.3f\n",(req_phdr->p_memsz-((uintptr_t)address-(uintptr_t)req_phdr->p_vaddr))/1024.0);
         }
@@ -119,7 +120,7 @@ void page_allocator(void* address){
 //     }
 
 //     if (req_phdr == NULL) {
-//         perror("Segment not found for faulting address");
+//         perror("Segment not found \n");
 //         exit(EXIT_FAILURE);
 //     }
 
