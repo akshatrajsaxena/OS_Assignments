@@ -131,6 +131,7 @@ void parallel_for(int low1, int high1, int low2, int high2,
   clock_t end_time = clock();
   double duration = ((double)(end_time - start_time)) / CLOCKS_PER_SEC * 1000.0;
   printf("Total time taken: %f milliseconds\n", duration);
+  //Each paralled_for is create its own set of theads. Three time printed for mat multiplication, it is because the first time is for mat initialization, second is for mat multiplication and third is for mat verification. Each printing their own time after their threads complete.
 }
 void demonstration(std::function<void()> &&lambda)
 {
@@ -159,8 +160,8 @@ int main(int argc, char **argv)
   {
     std::cout << "====== Hope you enjoyed CSE231(A) ======\n";
   };
-  demonstration(lambda2); // Execute the lambda function
-  return rc; // Return the result of the user main function
+  demonstration(lambda2); 
+  return rc; 
 }
 
 #define main user_main
