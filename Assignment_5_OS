@@ -64,6 +64,7 @@ void parallel_for(int low, int high, std::function<void(int)> &&lambda, int numT
       return;
     }
   }
+//   calculating thread executiontime
   clock_t end_time = clock(); // Stop the timer
   double duration = ((double)(end_time - start_time)) / CLOCKS_PER_SEC * 1000.0; // Duration in milliseconds of the parallel for loop execution for the given number of threads
   printf("Total time taken: %f milliseconds\n", duration); 
@@ -76,7 +77,7 @@ typedef struct
   int low2;
   int high2;
   std::function<void(int, int)> lambda;
-} mat;// Structure to hold the xrange and lambda function for each thread of matrix
+} mat;// Structure to hold the range of two matrix and lambda function for each thread of matrix
 
 // processing matrix
 void *thread_func2(void *ptr)
