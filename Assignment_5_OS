@@ -13,17 +13,17 @@ typedef struct
   int high;
   std::function<void(int)> lambda;
 
-} vec;
+} vec; // Structure to hold the range and lambda function for each thread
 
 void *thread_func1(void *arg)
 {
   vec *vec1 = static_cast<vec *>(arg);
   if(vec1 == NULL)
   {
-    std::cerr << "Error: Failed to cast argument to vec*\n";
+    std::cerr << "Error! Failed to cast argument to vec*\n";
     pthread_exit(NULL);
   }
-  for (int i = vec1->low; i < vec1->high; ++i)
+  for (int i = vec1->low; i < vec1->high; ++i) // Execute the lambda function for each value in the range
   {
     vec1->lambda(i);
     
@@ -35,35 +35,35 @@ void parallel_for(int low, int high, std::function<void(int)> &&lambda, int numT
 {
   if(numThreads <= 0)
   {
-    std::cerr << "Error: Number of threads must be greater than 0\n";
+    std::cerr << "Error! Number of threads must be greater than 0\n";
     return;
   }
-  pthread_t thread_list[numThreads];
-  vec args[numThreads];
-  int chunk = (high - low) / numThreads;
-  clock_t start_time = clock();
+  pthread_t thread_list[numThreads]; 
+  vec args[numThreads]; // Array of vec structures to hold the range and lambda function for each thread
+  int chunk = (high - low) / numThreads; 
+  clock_t start_time = clock(); 
 
   for (int i = 0; i < numThreads; ++i)
   {
-    args[i].low = i * chunk;
-    args[i].high = (i == numThreads - 1) ? high : (i + 1) * chunk;
-    args[i].lambda = lambda;
-    if(pthread_create(&thread_list[i], NULL, thread_func1, (void *)&args[i]) != 0)
+    args[i].low = i * chunk; // Calculating the lower bound for the thread
+    args[i].high = (i == numThreads - 1) ? high : (i + 1) * chunk; // Calculate the upper bound for the thread
+    args[i].lambda = lambda; //Lambda function to be executed by the thread for each value in the range
+    if(pthread_create(&thread_list[i], NULL, thread_func1, (void *)&args[i]) != 0) // Create the thread and check for errors
     {
-      std::cerr << "Error: Failed to create thread\n";
+      std::cerr << "Error! Failed to create thread\n";
       return;
     }
   }
   for (int i = 0; i < numThreads; ++i){
     if(pthread_join(thread_list[i], NULL) != 0)
     {
-      std::cerr << "Error: Failed to join thread\n";
+      std::cerr << "Error! Failed to join thread\n";
       return;
     }
   }
-  clock_t end_time = clock();
-  double duration = ((double)(end_time - start_time)) / CLOCKS_PER_SEC * 1000.0;
-  printf("Total time taken: %f milliseconds\n", duration);
+  clock_t end_time = clock(); // Stop the timer
+  double duration = ((double)(end_time - start_time)) / CLOCKS_PER_SEC * 1000.0; // Duration in milliseconds of the parallel for loop execution for the given number of threads
+  printf("Total time taken: %f milliseconds\n", duration); 
 }
 
 typedef struct
@@ -80,12 +80,12 @@ void *thread_func2(void *ptr)
   mat *mat1 = (mat *)ptr;
   if(mat1 == NULL)
   {
-    std::cerr << "Error: Failed to cast argument to mat*\n";
+    std::cerr << "Error! Failed to cast argument to mat*\n";
     pthread_exit(NULL);
   }
   for (int i = mat1->low1; i < mat1->high1; ++i)
   {
-    for (int j = mat1->low2; j < mat1->high2; ++j)
+    for (int j = mat1->low2; j < mat1->high2; ++j) //
     {
       mat1->lambda(i, j);
     }
@@ -98,7 +98,7 @@ void parallel_for(int low1, int high1, int low2, int high2,
 {
   if(numThreads <= 0)
   {
-    std::cerr << "Error: Number of threads must be greater than 0\n";
+    std::cerr << "Error! Number of threads must be greater than 0\n";
     return;
   }
   pthread_t thread_list[numThreads];
@@ -116,7 +116,7 @@ void parallel_for(int low1, int high1, int low2, int high2,
     args[i].lambda = lambda;
     if(pthread_create(&thread_list[i], NULL, thread_func2, (void *)&args[i]) != 0)
     {
-      std::cerr << "Error: Failed to create thread\n";
+      std::cerr << "Error! Failed to create thread\n";
       return;
     }
   }
@@ -124,7 +124,7 @@ void parallel_for(int low1, int high1, int low2, int high2,
   {
     if(pthread_join(thread_list[i], NULL) != 0)
     {
-      std::cerr << "Error: Failed to join thread\n";
+      std::cerr << "Error! Failed to join thread\n";
       return;
     }
   }
@@ -136,7 +136,7 @@ void demonstration(std::function<void()> &&lambda)
 {
   if(!lambda)
   {
-    std::cerr << "Error: Lambda function is null\n";
+    std::cerr << "Error! Lambda function is null\n";
     return;
   }
   lambda();
@@ -159,8 +159,8 @@ int main(int argc, char **argv)
   {
     std::cout << "====== Hope you enjoyed CSE231(A) ======\n";
   };
-  demonstration(lambda2);
-  return rc;
+  demonstration(lambda2); // Execute the lambda function
+  return rc; // Return the result of the user main function
 }
 
 #define main user_main
