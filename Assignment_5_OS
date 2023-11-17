@@ -20,7 +20,7 @@ void *thread_func1(void *arg)
   vec *vec1 = static_cast<vec *>(arg);
   if(vec1 == NULL)
   {
-    std::cerr << "Error! Failed to cast argument to vec*\n";
+    perror( "Error! Failed to cast argument to vec*\n");
     pthread_exit(NULL);
   }
   for (int i = vec1->low; i < vec1->high; ++i) // Execute the lambda function for each value in the range
@@ -35,7 +35,7 @@ void parallel_for(int low, int high, std::function<void(int)> &&lambda, int numT
 {
   if(numThreads <= 0)
   {
-    std::cerr << "Error! Number of threads must be greater than 0\n";
+    perror("Error! Number of threads must be greater than 0\n");
     return;
   }
   pthread_t thread_list[numThreads]; 
@@ -50,14 +50,14 @@ void parallel_for(int low, int high, std::function<void(int)> &&lambda, int numT
     args[i].lambda = lambda; //Lambda function to be executed by the thread for each value in the range
     if(pthread_create(&thread_list[i], NULL, thread_func1, (void *)&args[i]) != 0) // Create the thread and check for errors
     {
-      std::cerr << "Error! Failed to create thread\n";
+      perror("Error! Failed to create thread\n");
       return;
     }
   }
   for (int i = 0; i < numThreads; ++i){
     if(pthread_join(thread_list[i], NULL) != 0)
     {
-      std::cerr << "Error! Failed to join thread\n";
+      perror("Error! Failed to join thread\n");
       return;
     }
   }
@@ -80,7 +80,7 @@ void *thread_func2(void *ptr)
   mat *mat1 = (mat *)ptr;
   if(mat1 == NULL)
   {
-    std::cerr << "Error! Failed to cast argument to mat*\n";
+    perror("Error! Failed to cast argument to mat*\n");
     pthread_exit(NULL);
   }
   for (int i = mat1->low1; i < mat1->high1; ++i)
@@ -98,7 +98,7 @@ void parallel_for(int low1, int high1, int low2, int high2,
 {
   if(numThreads <= 0)
   {
-    std::cerr << "Error! Number of threads must be greater than 0\n";
+    perror("Error! Number of threads must be greater than 0\n");
     return;
   }
   pthread_t thread_list[numThreads];
@@ -116,7 +116,7 @@ void parallel_for(int low1, int high1, int low2, int high2,
     args[i].lambda = lambda;
     if(pthread_create(&thread_list[i], NULL, thread_func2, (void *)&args[i]) != 0)
     {
-      std::cerr << "Error! Failed to create thread\n";
+      perror("Error! Failed to create thread\n");
       return;
     }
   }
@@ -124,7 +124,7 @@ void parallel_for(int low1, int high1, int low2, int high2,
   {
     if(pthread_join(thread_list[i], NULL) != 0)
     {
-      std::cerr << "Error! Failed to join thread\n";
+      perror("Error! Failed to join thread\n");
       return;
     }
   }
