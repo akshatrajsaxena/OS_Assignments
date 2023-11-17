@@ -13,8 +13,9 @@ typedef struct
   int high;
   std::function<void(int)> lambda;
 
-} vec; // Structure to hold the range and lambda function for each thread
+} vec; // Structure to hold the range and lambda function for each thread of vector
 
+// processing vector
 void *thread_func1(void *arg)
 {
   vec *vec1 = static_cast<vec *>(arg);
@@ -31,6 +32,8 @@ void *thread_func1(void *arg)
 
   pthread_exit(NULL);
 }
+
+// parallel method for vector
 void parallel_for(int low, int high, std::function<void(int)> &&lambda, int numThreads)
 {
   if(numThreads <= 0)
@@ -73,8 +76,9 @@ typedef struct
   int low2;
   int high2;
   std::function<void(int, int)> lambda;
-} mat;
+} mat;// Structure to hold the xrange and lambda function for each thread of matrix
 
+// processing matrix
 void *thread_func2(void *ptr)
 {
   mat *mat1 = (mat *)ptr;
@@ -93,6 +97,7 @@ void *thread_func2(void *ptr)
 
   pthread_exit(NULL);
 }
+// parallelizing matrix sum
 void parallel_for(int low1, int high1, int low2, int high2,
                   std::function<void(int, int)> &&lambda, int numThreads)
 {
@@ -129,6 +134,7 @@ void parallel_for(int low1, int high1, int low2, int high2,
     }
   }
   clock_t end_time = clock();
+  // calculating thread time
   double duration = ((double)(end_time - start_time)) / CLOCKS_PER_SEC * 1000.0;
   printf("Total time taken: %f milliseconds\n", duration);
   //Each paralled_for is create its own set of theads. Three time printed for mat multiplication, it is because the first time is for mat initialization, second is for mat multiplication and third is for mat verification. Each printing their own time after their threads complete.
